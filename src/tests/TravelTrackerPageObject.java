@@ -1,76 +1,83 @@
 package tests;
+import com.oyster.OysterCard;
+import com.oyster.OysterCardReader;
 import com.tfl.billing.*;
+import com.tfl.external.CustomerDatabase;
+import com.tfl.underground.OysterReaderLocator;
+import com.tfl.underground.Station;
+import org.junit.Assert;
+
+import java.util.Set;
+import java.util.UUID;
 
 /**
  * Created by Noa Luthi on 18/11/2017.
  */
 
+ /*
+   This test will check that connecting, registering and generating eventLog works correctly.
+   We will do this by creating a false journey and asserting different stages of the "tapping".
+ */
+
 public class TravelTrackerPageObject {
 
-    private List<Customer> testCustomers = new ArrayList<Customer>();
-    private final List<JourneyEvent> testEventLog = new ArrayList<JourneyEvent>();
 
-    /*
-    This test is going to check the process of scanning an oyster card and adding
-    the correct journeys to a specific customer's journey log.
-     */
+    private OysterCard myCard;
+    private OysterCardReader paddingtonReader;
+    private OysterCardReader bakerStreetReader;
+    private TravelTracker travelTracker;
+    private Set<UUID> currentlyTravelling;
 
+    public TravelTrackerPageObject() {
 
-    /*
-    This method iterates through the customers database we created and
-    creates a list of journeys for each customer.
-     */
-    public void createJourneyListForEachCustomer() {
-
-        testCustomers =
-
-        for (Customer customer:testCustomers) {
-            TravelTracker travelTracker = new TravelTracker();
-            travelTracker.cardScanned(customer.getCardID(),customer.getReaderID());
-        }
+        currentlyTravelling = travelTracker.getCurrentlyTravelling();
     }
 
     /*
-    create list of all journeys of all customers.
-    each customer will have 3 journeys.
-     */
-    public void createTestEventLogForAllJourneys() {
+       Creating an oyster card.
+       Journey from Paddington to Baker Street.
+       Connecting the card reader in each station.
+    */
+    public void generateOysterCard() {
 
-        for (int i=0;i<30;i++) {
-
-            int customerIndex = i%3;
-            UUID customerIDCard = testCustomers.get(customerIndex).getCardID();
-            UUID customerReaderCard = testCustomers.get(customerIndex).getReaderID();
-            JourneyStart journeyStart = new JourneyStart(customerIDCard,customerReaderCard);
-            JourneyEnd journeyEnd = new JourneyEnd(customerIDCard, customerReaderCard);
-            testEventLog.add(journeyStart);
-            testEventLog.add(journeyEnd);
-        }
-    }
+       myCard = new OysterCard("38400000-8cf0-11bd-b23e-10b96e4ef00d");
+       paddingtonReader = OysterReaderLocator.atStation(Station.PADDINGTON);
+       bakerStreetReader = OysterReaderLocator.atStation(Station.BAKER_STREET);
+       travelTracker = new TravelTracker();
+       travelTracker.connect(paddingtonReader, bakerStreetReader);
+   }
 
     /*
-    asserting that the test grouping of events (by cardID) corresponds to the testing data.
-     */
-    public void assertEventLog() {
+       touch oyster card at paddington, and assert that the cardID has been added to the
+       currently travelling set, and is Re
+    */
 
-        TravelTracker travelTracker = new TravelTracker();
+   public void assertInitialTouch() {
 
-        for (JourneyEvent journey: testEventLog) {
-            travelTracker.cardScanned(journey.cardId(),journey.readerId());
-        }
+       paddingtonReader.touch(myCard);
 
-        List<JourneyEvent> eventLog = travelTracker.getEventLog();
+       JourneyEvent expectedJourneyStart = new JourneyStart(myCard.id(),paddingtonReader.id());
 
-        //assert that testEventLog and eventLog contain the same journeys.
-        Assert.assertEquals(eventLog,testEventLog);
-    }
+        //assert that the event log contains a JourneyStart.
+       Assert.assertTrue(travelTracker.getEventLog().contains(expectedJourneyStart));
 
-    public static void main(String args[]) {
-        CardScannedPageObject cardScannedPageObject = new CardScannedPageObject();
-        cardScannedPageObject.generateCustomers();
-        cardScannedPageObject.createJourneyListForEachCustomer();
-        cardScannedPageObject.createJourneyListForEachCustomer();
-        cardScannedPageObject.createTestEventLogForAllJourneys();
-        cardScannedPageObject.assertEventLog();
-    }
+       //assert that card is registered.
+       Assert.assertTrue(CustomerDatabase.getInstance().isRegisteredId(myCard.id()));
+
+       //assert that currently travelling list contains my card.
+       Assert.assertTrue(currentlyTravelling.contains(myCard.id()));
+   }
+
+   public void assertEndTouch() {
+
+       bakerStreetReader.touch(myCard);
+
+       JourneyEvent expectedJourneyEnd = new JourneyEnd(myCard.id(),bakerStreetReader.id());
+
+       //assert that the event log contains a JourneyEnd.
+       Assert.assertTrue(travelTracker.getEventLog().contains(expectedJourneyEnd));
+
+       //assert that the cardID is no longer in currently travelling.
+       Assert.assertTrue(!currentlyTravelling.contains(myCard.id()));
+   }
 }
