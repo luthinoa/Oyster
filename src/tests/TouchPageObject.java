@@ -1,12 +1,18 @@
 package tests;
+
+import com.oyster.*;
 import com.oyster.OysterCard;
 import com.oyster.OysterCardReader;
 import com.tfl.billing.*;
 import com.tfl.external.CustomerDatabase;
+import com.tfl.external.Customer;
+
+
 import com.tfl.underground.OysterReaderLocator;
 import com.tfl.underground.Station;
 import org.junit.Assert;
 
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 
@@ -19,7 +25,7 @@ import java.util.UUID;
    We will do this by creating a false journey and asserting different stages of the "tapping".
  */
 
-public class TravelTrackerPageObject {
+public class TouchPageObject {
 
 
     private OysterCard myCard;
@@ -28,8 +34,8 @@ public class TravelTrackerPageObject {
     private TravelTracker travelTracker;
     private Set<UUID> currentlyTravelling;
 
-    public TravelTrackerPageObject() {
-
+    public TouchPageObject(){
+        travelTracker = new TravelTracker();
         currentlyTravelling = travelTracker.getCurrentlyTravelling();
     }
 
@@ -43,7 +49,6 @@ public class TravelTrackerPageObject {
        myCard = new OysterCard("38400000-8cf0-11bd-b23e-10b96e4ef00d");
        paddingtonReader = OysterReaderLocator.atStation(Station.PADDINGTON);
        bakerStreetReader = OysterReaderLocator.atStation(Station.BAKER_STREET);
-       travelTracker = new TravelTracker();
        travelTracker.connect(paddingtonReader, bakerStreetReader);
    }
 
@@ -57,14 +62,20 @@ public class TravelTrackerPageObject {
        paddingtonReader.touch(myCard);
 
        JourneyEvent expectedJourneyStart = new JourneyStart(myCard.id(),paddingtonReader.id());
+       UUID expectedJourneyStartID = expectedJourneyStart.cardId();
 
-        //assert that the event log contains a JourneyStart.
-       Assert.assertTrue(travelTracker.getEventLog().contains(expectedJourneyStart));
+       JourneyEvent eventFromEventLog = travelTracker.getEventLog().get(0);
+       UUID eventFromEventLogID = eventFromEventLog.cardId();
 
+        //assert that the event log contains a JourneyStart with the same cardID.
+       Assert.assertTrue(expectedJourneyStartID.equals(eventFromEventLogID));
+
+
+       CustomerDatabase customerDatabase = CustomerDatabase.getInstance();
        //assert that card is registered.
-       Assert.assertTrue(CustomerDatabase.getInstance().isRegisteredId(myCard.id()));
+       Assert.assertTrue(customerDatabase.isRegisteredId(myCard.id()));
 
-       //assert that currently travelling list contains my card.
+       //assert the cardId is in currently traveling.
        Assert.assertTrue(currentlyTravelling.contains(myCard.id()));
    }
 
@@ -73,9 +84,13 @@ public class TravelTrackerPageObject {
        bakerStreetReader.touch(myCard);
 
        JourneyEvent expectedJourneyEnd = new JourneyEnd(myCard.id(),bakerStreetReader.id());
+       UUID expectedJourneyEndID = expectedJourneyEnd.cardId();
+
+       JourneyEvent eventFromEventLog = travelTracker.getEventLog().get(1);
+       UUID eventFromEventLogID = eventFromEventLog.cardId();
 
        //assert that the event log contains a JourneyEnd.
-       Assert.assertTrue(travelTracker.getEventLog().contains(expectedJourneyEnd));
+       Assert.assertTrue(expectedJourneyEndID.equals(eventFromEventLogID));
 
        //assert that the cardID is no longer in currently travelling.
        Assert.assertTrue(!currentlyTravelling.contains(myCard.id()));
