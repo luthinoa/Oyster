@@ -19,7 +19,6 @@ public class TouchTest {
     public void testTouchingCardAtStartAndEnd() {
 
         TouchPageObject touchPageObject = new TouchPageObject();
-        touchPageObject.generateOysterCard();
         touchPageObject.assertInitialTouch();
         touchPageObject.assertEndTouch();
     }

@@ -7,7 +7,6 @@ import com.tfl.billing.*;
 import com.tfl.external.CustomerDatabase;
 import com.tfl.external.Customer;
 
-
 import com.tfl.underground.OysterReaderLocator;
 import com.tfl.underground.Station;
 import org.junit.Assert;
@@ -27,30 +26,22 @@ import java.util.UUID;
 
 public class TouchPageObject {
 
-
     private OysterCard myCard;
+    private Set<UUID> currentlyTravelling;
+    private TestOysterCard testOysterCard;
     private OysterCardReader paddingtonReader;
     private OysterCardReader bakerStreetReader;
     private TravelTracker travelTracker;
-    private Set<UUID> currentlyTravelling;
 
     public TouchPageObject(){
-        travelTracker = new TravelTracker();
+
+        testOysterCard = new TestOysterCard();
+        myCard = testOysterCard.getMyCard();
+        travelTracker = testOysterCard.getTravelTracker();
+        paddingtonReader = testOysterCard.getPaddingtonReader();
+        bakerStreetReader = testOysterCard.getBakerStreetReader();
         currentlyTravelling = travelTracker.getCurrentlyTravelling();
     }
-
-    /*
-       Creating an oyster card.
-       Journey from Paddington to Baker Street.
-       Connecting the card reader in each station.
-    */
-    public void generateOysterCard() {
-
-       myCard = new OysterCard("38400000-8cf0-11bd-b23e-10b96e4ef00d");
-       paddingtonReader = OysterReaderLocator.atStation(Station.PADDINGTON);
-       bakerStreetReader = OysterReaderLocator.atStation(Station.BAKER_STREET);
-       travelTracker.connect(paddingtonReader, bakerStreetReader);
-   }
 
     /*
        touch oyster card at paddington, and assert that the cardID has been added to the
