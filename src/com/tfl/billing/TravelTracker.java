@@ -12,6 +12,7 @@ public class TravelTracker implements ScanListener {
 
     static final BigDecimal OFF_PEAK_JOURNEY_PRICE = new BigDecimal(2.40);
     static final BigDecimal PEAK_JOURNEY_PRICE = new BigDecimal(3.20);
+    private BigDecimal customerJourneyForTesting;
 
     private final List<JourneyEvent> eventLog = new ArrayList<JourneyEvent>();
     private final Set<UUID> currentlyTravelling = new HashSet<UUID>();
@@ -53,6 +54,12 @@ public class TravelTracker implements ScanListener {
                 journeyPrice = PEAK_JOURNEY_PRICE;
             }
             customerTotal = customerTotal.add(journeyPrice);
+
+            //for testing - if this is the first journey, assign the charging value to the customerJourneyForTesting.
+            if(journey.equals(journeys.get(0))){
+                customerJourneyForTesting = roundToNearestPenny(customerTotal);
+            }
+
         }
 
         PaymentsSystem.getInstance().charge(customer, journeys, roundToNearestPenny(customerTotal));
@@ -87,6 +94,8 @@ public class TravelTracker implements ScanListener {
         }
     }
 
+    public BigDecimal getCustomerTotal() {return customerJourneyForTesting; }
+
     @Override
     public void cardScanned(UUID cardId, UUID readerId) {
         if (currentlyTravelling.contains(cardId)) {
@@ -101,5 +110,4 @@ public class TravelTracker implements ScanListener {
             }
         }
     }
-
 }

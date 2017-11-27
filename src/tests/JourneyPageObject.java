@@ -1,17 +1,14 @@
 package tests;
 
-import com.oyster.*;
 import com.oyster.OysterCard;
 import com.oyster.OysterCardReader;
 import com.tfl.billing.*;
 import com.tfl.external.CustomerDatabase;
-import com.tfl.external.Customer;
 
-import com.tfl.underground.OysterReaderLocator;
-import com.tfl.underground.Station;
 import org.junit.Assert;
 
-import java.util.List;
+import java.math.BigDecimal;
+import java.util.Calendar;
 import java.util.Set;
 import java.util.UUID;
 
@@ -24,18 +21,21 @@ import java.util.UUID;
    We will do this by creating a false journey and asserting different stages of the "tapping".
  */
 
-public class TouchPageObject {
+public class JourneyPageObject {
 
     private OysterCard myCard;
     private Set<UUID> currentlyTravelling;
-    private TestOysterCard testOysterCard;
+    private OysterCardForTesting testOysterCard;
     private OysterCardReader paddingtonReader;
     private OysterCardReader bakerStreetReader;
     private TravelTracker travelTracker;
 
-    public TouchPageObject(){
+    static final BigDecimal OFF_PEAK_JOURNEY_PRICE = new BigDecimal(2.40);
+    static final BigDecimal PEAK_JOURNEY_PRICE = new BigDecimal(3.20);
 
-        testOysterCard = new TestOysterCard();
+    public JourneyPageObject(){
+
+        testOysterCard = new OysterCardForTesting();
         myCard = testOysterCard.getMyCard();
         travelTracker = testOysterCard.getTravelTracker();
         paddingtonReader = testOysterCard.getPaddingtonReader();
@@ -45,7 +45,7 @@ public class TouchPageObject {
 
     /*
        touch oyster card at paddington, and assert that the cardID has been added to the
-       currently travelling set, and is Re
+       currently travelling set, and is Registered.
     */
 
    public void assertInitialTouch() {
@@ -70,6 +70,11 @@ public class TouchPageObject {
        Assert.assertTrue(currentlyTravelling.contains(myCard.id()));
    }
 
+    /*
+       touch oyster card at baker street, and assert that the cardID has been removed from the
+       currently travelling set.
+    */
+
    public void assertEndTouch() {
 
        bakerStreetReader.touch(myCard);
@@ -85,5 +90,35 @@ public class TouchPageObject {
 
        //assert that the cardID is no longer in currently travelling.
        Assert.assertTrue(!currentlyTravelling.contains(myCard.id()));
+   }
+
+   /*
+   Call charge accounts from our program, to charge the journey from Paddington to Baker Street, and assert
+   that the correct charge has been applied to the journey.
+   If it's Peak at time of testing - then compare to peak charge value, and vice versa when off peak.
+    */
+
+   public void assertJourneyPrice(){
+
+       //charge accounts (which hold the journey from paddington to baker street).
+       travelTracker.chargeAccounts();
+
+       //get the charging value of the journey from travelTracker.
+       BigDecimal testJourneyChargeValue = travelTracker.getCustomerTotal();
+
+
+       //check what is current hour of the day, to know if to assert to peak/off peak journey.
+       Calendar calendar = Calendar.getInstance();
+       int hourOfDayAtTest = calendar.HOUR_OF_DAY;
+
+       //if current hour of the day is peak, compare to peak set charging value.
+       if (hourOfDayAtTest>=6 && hourOfDayAtTest<=10 || hourOfDayAtTest>=17 && hourOfDayAtTest<=20) {
+           Assert.assertTrue(PEAK_JOURNEY_PRICE.doubleValue()==testJourneyChargeValue.doubleValue());
+       }
+
+       //if current hour of the day is off peak, compare to off peak set charging value.
+       else {
+           Assert.assertTrue(OFF_PEAK_JOURNEY_PRICE.doubleValue()==testJourneyChargeValue.doubleValue());
+       }
    }
 }
